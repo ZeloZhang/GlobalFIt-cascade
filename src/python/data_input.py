@@ -12,11 +12,11 @@ class data_input:
 
         ncols = 5
         self.mydf = pd.read_csv(infile, sep = "\s+")
-        self.run = self.mydf.Run.tolist()
-        self.event = self.mydf.Event.tolist()
-        self.logenergy_rec = self.mydf.logEnergyRec.tolist()
-        self.coszenith_rec = self.mydf.cosZenithRec.tolist()
-        self.ra_rec = self.mydf.AziRec.tolist()
+        self.run = self.mydf.Run
+        self.event = self.mydf.Event
+        self.logenergy_rec = self.mydf.logEnergyRec
+        self.coszenith_rec = self.mydf.cosZenithRec
+        self.ra_rec = self.mydf.AziRec
         self.size = len(self.mydf)
 
     def get_size(self):

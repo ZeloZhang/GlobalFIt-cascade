@@ -21,4 +21,4 @@ class astro_model_single_plaw(astro_model_base):
 
     def get_flux(self, pars, energy, coszen, ra, ptype):
         # assumes pars is ordered according to names provided above
-        return [pars[0]*10**(-18)*np.power(en/(10**5), -1.0*pars[1]) for en in energy]
+        return pars[0]*10**(-18)*np.power(energy/(10**5), -1.0*pars[1])

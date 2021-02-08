@@ -2,8 +2,12 @@ import numpy as np
 import pandas as pd
 import copy
 import sys
+import scipy
+from scipy.stats import norm
+from scipy.optimize import minimize
+from scipy import integrate
 
-class model_base:
+class model_base_snowstorm:
     def __init__(self, fitdata, astro):
         self.input_hists = fitdata
         self.astro_model = astro
@@ -11,9 +15,32 @@ class model_base:
         par1 = "conv_norm"
         par2 = "prompt_norm"
         par3 = "muon_norm_mlb"
-        self.par_names = [par0, par1, par2, par3]
+        par4 = "scattering"
+        par5 = "absorption"
+        par6 = "anisotropy_scale"
+        par7 = "dom_efficiency"
+        par8 = "holeiceforward_unified1"
+        par9 = "holeiceforward_unified2"
+        self.par_names = [par0, par1, par2, par3, par4, par5, par6, par7, par8, par9]
         self.store_parameters()
 
+        # default set for snowstorm reweighting
+        self.sigmas = {
+            "scattering": 0.04, 
+            "absorption": 0.04,
+            "anisotropy_scale": 0.4,
+            "dom_efficiency": 0.04,
+            "holeiceforward_unified1": 0.4,
+            "holeiceforward_unified2": 0.08,
+            }
+        self.snowstorm_pars_range = {
+            "scattering": (0.9,1.1), 
+            "absorption": (0.9,1.1),
+            "anisotropy_scale": (0,2),
+            "dom_efficiency": (0.9,1.1),
+            "holeiceforward_unified1": (-1,1),
+            "holeiceforward_unified2": (-0.2,0.2),
+            }
         print("... jointly analyze {} event selections.".format(len(fitdata)))
 
     def __del__(self):
@@ -100,8 +127,8 @@ class model_base:
         if np.isnan(neglogl):
             print(" !!!!! FATAL ERROR !!!! - Likelihood evaluated to NaN. ")
             print(pars)
-        #print(pars)
-        #print(neglogl)
+        print(pars)
+        print(neglogl)
         return neglogl
 
     def likelihood_gof(self, pars):
@@ -155,11 +182,34 @@ class model_base:
 
     def update_hists(self, pars):
         astro_pars = pars[self.npars_base:]
-        self.update_astro(astro_pars)
+        self.update_astro(astro_pars,pars)
         self.update_atmospherics(pars)
         self.update_sum()
 
-    def update_astro(self, astro_pars):
+    def truncated_normal_distribution(self, xs, mu, sigma, variable_range):
+        # input list of x avoid calculat integral multiple times
+        def my_norm_distribution(x, loc, scale):
+            return np.exp(-((x-loc)/scale)**2/2)/np.sqrt(2*np.pi)/scale
+
+        f = scipy.stats.norm(loc=mu, scale=sigma)
+        normalization = integrate.quad(f.pdf, variable_range[0], variable_range[1])
+        return my_norm_distribution(xs,loc=mu,scale=sigma)/normalization[0] # assuming the original distribution of systematic parameters are uniform
+
+    def get_snowstorm_reweight(self, pars, component):
+        # to get snowstorm reweight factor
+        # hard code order of parameters here, need to be able to fit with models automatically
+
+        reweight_factor = 1
+        # reweight_factor = truncated_normal_distribution()*(range_max-range_min)
+        reweight_factor = reweight_factor * self.truncated_normal_distribution(xs=component.scattering, mu=pars[4], sigma=self.sigmas["scattering"], variable_range=self.snowstorm_pars_range["scattering"]) * (self.snowstorm_pars_range["scattering"][1]-self.snowstorm_pars_range["scattering"][0])
+        reweight_factor = reweight_factor * self.truncated_normal_distribution(xs=component.absorption, mu=pars[5], sigma=self.sigmas["absorption"], variable_range=self.snowstorm_pars_range["absorption"]) * (self.snowstorm_pars_range["absorption"][1]-self.snowstorm_pars_range["absorption"][0])
+        reweight_factor = reweight_factor * self.truncated_normal_distribution(xs=component.anisotropy_scale, mu=pars[6], sigma=self.sigmas["anisotropy_scale"], variable_range=self.snowstorm_pars_range["anisotropy_scale"]) * (self.snowstorm_pars_range["anisotropy_scale"][1]-self.snowstorm_pars_range["anisotropy_scale"][0])
+        reweight_factor = reweight_factor * self.truncated_normal_distribution(xs=component.dom_efficiency, mu=pars[7], sigma=self.sigmas["dom_efficiency"], variable_range=self.snowstorm_pars_range["dom_efficiency"]) * (self.snowstorm_pars_range["dom_efficiency"][1]-self.snowstorm_pars_range["dom_efficiency"][0])
+        reweight_factor = reweight_factor * self.truncated_normal_distribution(xs=component.holeiceforward_unified1, mu=pars[8], sigma=self.sigmas["holeiceforward_unified1"], variable_range=self.snowstorm_pars_range["holeiceforward_unified1"]) * (self.snowstorm_pars_range["holeiceforward_unified1"][1]-self.snowstorm_pars_range["holeiceforward_unified1"][0])
+        reweight_factor = reweight_factor * self.truncated_normal_distribution(xs=component.holeiceforward_unified2, mu=pars[9], sigma=self.sigmas["holeiceforward_unified2"], variable_range=self.snowstorm_pars_range["holeiceforward_unified2"]) * (self.snowstorm_pars_range["holeiceforward_unified2"][1]-self.snowstorm_pars_range["holeiceforward_unified2"][0])
+        return reweight_factor
+
+    def update_astro(self, astro_pars, all_pars):
         # adjust histograms according to parameter values
         # this needs to be performed on each dataset that enters the likelihood
 
@@ -172,11 +222,16 @@ class model_base:
 
             # adjust astro histograms
             flux = self.astro_model.get_flux(astro_pars, dataset.nue.energy_prim, dataset.nue.coszenith_prim, dataset.nue.ra_prim, dataset.nue.ptype)
-            dataset.nue.astro.Fill(dataset.nue.logenergy_rec, dataset.nue.coszenith_rec, dataset.nue.ra_rec, [aw * f for aw,f in zip(dataset.nue.astro_weight, flux)])
+            snowstorm_reweight = self.get_snowstorm_reweight(all_pars, dataset.nue)
+            dataset.nue.astro.Fill(dataset.nue.logenergy_rec, dataset.nue.coszenith_rec, dataset.nue.ra_rec, [rw * aw * f for rw, aw,f in zip(snowstorm_reweight, dataset.nue.astro_weight, flux)])
+
             flux = self.astro_model.get_flux(astro_pars, dataset.numu.energy_prim, dataset.numu.coszenith_prim, dataset.numu.ra_prim, dataset.numu.ptype)
-            dataset.numu.astro.Fill(dataset.numu.logenergy_rec, dataset.numu.coszenith_rec, dataset.numu.ra_rec, [aw * f for aw,f in zip (dataset.numu.astro_weight, flux)])
+            snowstorm_reweight = self.get_snowstorm_reweight(all_pars, dataset.numu)
+            dataset.numu.astro.Fill(dataset.numu.logenergy_rec, dataset.numu.coszenith_rec, dataset.numu.ra_rec, [rw * aw * f for rw, aw,f in zip (snowstorm_reweight, dataset.numu.astro_weight, flux)])
+
             flux = self.astro_model.get_flux(astro_pars, dataset.nutau.energy_prim, dataset.nutau.coszenith_prim, dataset.nutau.ra_prim, dataset.nutau.ptype)
-            dataset.nutau.astro.Fill(dataset.nutau.logenergy_rec, dataset.nutau.coszenith_rec, dataset.nutau.ra_rec, [aw * f for aw,f in zip(dataset.nutau.astro_weight, flux)])
+            snowstorm_reweight = self.get_snowstorm_reweight(all_pars, dataset.nutau)
+            dataset.nutau.astro.Fill(dataset.nutau.logenergy_rec, dataset.nutau.coszenith_rec, dataset.nutau.ra_rec, [rw * aw * f for rw,aw,f in zip(snowstorm_reweight, dataset.nutau.astro_weight, flux)])
 
     def update_sum(self):
         for i in range(self.ndatasets):
@@ -209,11 +264,32 @@ class model_base:
                 dataset.muon.hist.Scale(pars[0])
 
             dataset.atm_conv.Reset()
-            dataset.atm_conv = copy.deepcopy(dataset.atm_conv_orig)
+            dataset.atm_prompt.Reset()
+            
+            dataset.nue.conv.Reset()
+            dataset.nue.prompt.Reset()
+            dataset.numu.conv.Reset()
+            dataset.numu.prompt.Reset()
+            dataset.nutau.prompt.Reset()
+
+            snowstorm_reweight = self.get_snowstorm_reweight(pars, dataset.nue)
+            dataset.nue.conv.Fill(dataset.nue.logenergy_rec, dataset.nue.coszenith_rec, dataset.nue.ra_rec, [rw*cw for rw, cw in zip(snowstorm_reweight, dataset.nue.conv_weight)])
+            dataset.nue.prompt.Fill(dataset.nue.logenergy_rec, dataset.nue.coszenith_rec, dataset.nue.ra_rec, [rw*pw for rw, pw in zip(snowstorm_reweight, dataset.nue.prompt_weight)])
+
+            snowstorm_reweight = self.get_snowstorm_reweight(pars, dataset.numu)
+            dataset.numu.conv.Fill(dataset.numu.logenergy_rec, dataset.numu.coszenith_rec, dataset.numu.ra_rec, [rw*cw for rw, cw in zip(snowstorm_reweight, dataset.numu.conv_weight)])
+            dataset.numu.prompt.Fill(dataset.numu.logenergy_rec, dataset.numu.coszenith_rec, dataset.numu.ra_rec, [rw*pw for rw, pw in zip(snowstorm_reweight, dataset.numu.prompt_weight)])
+            
+            snowstorm_reweight = self.get_snowstorm_reweight(pars, dataset.nutau)
+            dataset.nutau.prompt.Fill(dataset.nutau.logenergy_rec, dataset.nutau.coszenith_rec, dataset.nutau.ra_rec, [rw*pw for rw, pw in zip(snowstorm_reweight, dataset.nutau.prompt_weight)])
+
+            dataset.atm_conv.Add(dataset.nue.conv)
+            dataset.atm_conv.Add(dataset.numu.conv)
             dataset.atm_conv.Scale(pars[1]) # conv norm (no shape change)
 
-            dataset.atm_prompt.Reset()
-            dataset.atm_prompt = copy.deepcopy(dataset.atm_prompt_orig)
+            dataset.atm_prompt.Add(dataset.nue.prompt)
+            dataset.atm_prompt.Add(dataset.numu.prompt)
+            dataset.atm_prompt.Add(dataset.nutau.prompt)
             dataset.atm_prompt.Scale(pars[2]) # prompt norm (no shape change)
 
     def get_npars_base(self):

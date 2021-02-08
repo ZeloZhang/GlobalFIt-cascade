@@ -20,19 +20,25 @@ class neutrino_input:
         # file infile needs to be ASCII containing the following 11 columns
         # run_id, event_id, Enu, theta_nu, azimuth_nu, Erec, theta_rec, azimuth_rec, conv_weight, prompt_weight, astro_weight
 
-        ncols = 12
+        ncols = 18
         try:
             self.dataset = pd.read_csv(infile, sep="\s+")
-            self.logenergy_rec = self.dataset.logEnergyRec.tolist()
-            self.coszenith_rec = self.dataset.cosZenithRec.tolist()
-            self.ra_rec = self.dataset.AziRec.tolist()
-            self.conv_weight = self.dataset.conv_weight.tolist()
-            self.prompt_weight = self.dataset.prompt_weight.tolist()
-            self.astro_weight = self.dataset.astro_weight.tolist()
-            self.energy_prim = self.dataset.EnergyPrim.tolist()
-            self.coszenith_prim = self.dataset.cosZenithPrim.tolist()
-            self.ra_prim = self.dataset.AziPrim.tolist()
-            self.ptype = self.dataset.TypePrim.tolist()
+            self.logenergy_rec = self.dataset.logEnergyRec
+            self.coszenith_rec = self.dataset.cosZenithRec
+            self.ra_rec = self.dataset.AziRec
+            self.conv_weight = self.dataset.conv_weight
+            self.prompt_weight = self.dataset.prompt_weight
+            self.astro_weight = self.dataset.astro_weight
+            self.energy_prim = self.dataset.EnergyPrim
+            self.coszenith_prim = self.dataset.cosZenithPrim
+            self.ra_prim = self.dataset.AziPrim
+            self.ptype = self.dataset.TypePrim
+            self.scattering = self.dataset.snowstorm_Parameters_Scattering
+            self.absorption = self.dataset.snowstorm_Parameters_Absorption
+            self.anisotropy_scale = self.dataset.snowstorm_Parameters_AnisotropyScale
+            self.dom_efficiency = self.dataset.snowstorm_Parameters_DOMEfficiency
+            self.holeiceforward_unified1 = self.dataset.snowstorm_Parameters_HoleIceForward_Unified1
+            self.holeiceforward_unified2 = self.dataset.snowstorm_Parameters_HoleIceForward_Unified2
         except IOError:
             print("FATAL! unable to open file: ")
             print("... exiting")

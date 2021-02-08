@@ -4,7 +4,7 @@ import numpy as np
 
 from hists import hists
 from models.astro_model_single_plaw import astro_model_single_plaw
-from model_base import model_base
+from model_base_snowstorm import model_base_snowstorm
 
 class analysis:
     def __init__(self):
@@ -34,7 +34,6 @@ class analysis:
         name_nutau = "neutrino/nutau_cscd_all_neutrino.txt"
         name_mu = "HI_50cm/neutrino/mgun_cscd_all_neutrino.txt"
         name_data = "data/txt/data_cascade_dustcorr.txt"
-
         analysis1.read(dir_myc_HKKMS06+name_nue, dir_myc_HKKMS06+name_numu, dir_myc_HKKMS06+name_nutau, dir_myc+name_mu, dir_myc+name_data)
 
         # define muon background sample
@@ -81,14 +80,14 @@ class analysis:
         name_data5 = "as_data_SPE.txt"
         #analysis5.read(dir_as+name_nue5, dir_as+name_numu5, dir_as+name_nutau5, dir_as+name_mu5, dir_as+name_data5)
 
-        analyses = [analysis1]
-        #analyses = [analysis1,analysis2, analysis3]
+        #analyses = [analysis1]
+        analyses = [analysis1,analysis2, analysis3]
         #analyses = [analysis1, analysis2, analysis3, analysis4]
         #analyses = [analysis1, analysis2, analysis3, analysis4, analysis5]
 
         # create astro model. then create base model
         astro = astro_model_single_plaw()
-        mymodel = model_base(analyses, astro)
+        mymodel = model_base_snowstorm(analyses, astro)
         self.model = mymodel
 
         print("... wrapping done")
@@ -99,8 +98,6 @@ class analysis:
     def get_likelihood(self, pars):
         neglogl = self.model.likelihood(pars)
         self.n_llh_evals += 1
-        #print("analysis.get_likelihood")
-        #print(2*neglogl)
         # factor of 2 for Wilk's theorem
         return 2 * neglogl
 

@@ -21,7 +21,7 @@ class hist:
         self.value = np.zeros([nbx,nby,nbz])
 
     def Fill(self, logenergy_rec, coszenith_rec, ra_rec, weight=1):
-        if weight == 1:
+        if weight is 1:
             weight = np.ones(len(logenergy_rec))
         self.value = np.histogramdd([logenergy_rec,coszenith_rec,ra_rec],bins=[self.userbins_x,self.userbins_y,self.userbins_z],weights=weight)[0]
 

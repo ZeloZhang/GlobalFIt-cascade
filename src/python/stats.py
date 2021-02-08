@@ -9,7 +9,7 @@ class stats:
     def __init__(self, analysis_):
         self.analysis = copy.deepcopy(analysis_)
         self.target_func = self.analysis.get_likelihood
-        self.tolerance = 0.0000000001 # default, can be changed using set_tolerance()
+        self.tolerance = 0.0000001 # default, can be changed using set_tolerance()
         self.maxiter = 100000 # default
         self.flush_rate = 20 # default
         self.seeds = []
@@ -61,7 +61,8 @@ class stats:
     
         bounds = [(i,j) for i,j in zip(self.limits_low, self.limits_high)]
         print(bounds)
-        res = minimize(self.target_func, self.seeds, bounds=bounds, tol=self.tolerance)
+        local_target_func = self.target_func
+        res = minimize(local_target_func, self.seeds, bounds=bounds, tol=self.tolerance)
         print("... done")
         print("RESULTS (fitstatus: {})".format(res.status))
         #print(par_names)
