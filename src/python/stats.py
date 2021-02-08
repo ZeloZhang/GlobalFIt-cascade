@@ -83,6 +83,7 @@ class stats:
     
         if werrors:
             print("need to finish stats.py werror part")
+        return res
 
     def get_bestpars(self,**pars):
         # check if number of parameters requested matches model parameters
@@ -194,3 +195,38 @@ class stats:
         # need to order parameters to pass to likelihood
         parameters = analysis.get_par_names()
         pars = []
+
+
+    def asimov_fit(self, outfile_asimov_hists, asimov_point):
+        print("... doing fit on asimov dataset")
+        print("asimov_point is: ")
+        print(asimov_point)
+
+        # save original data hists
+        self.analysis.cache_data_hists()
+        # get asimov dataset for user provided asimov_point to file
+        self.analysis.get_histograms(outfile_asimov_hists, asimov_point)
+        for dataset in self.analysis.model.input_hists:
+            key = dataset.name+"_mcsum"
+            dataset.data.hist.set_hist(outfile_asimov_hists,key)
+        
+        print("finish data injection")
+        
+        # run fit
+        res = self.fit(False)
+
+        self.analysis.restore_data_hists()
+        return res
+
+    def inject_data(self, outfile, inject_pars):
+        print("inject_pars is: ")
+        print(inject_pars)
+
+        # save original data hists
+        self.analysis.cache_data_hists()
+        # get asimov dataset for user provided asimov_point to file
+        self.analysis.get_histograms(outfile, inject_pars)
+        for dataset in self.analysis.model.input_hists:
+            key = dataset.name+"_mcsum"
+            dataset.data.hist.set_hist(outfile, key)
+

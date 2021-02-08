@@ -112,11 +112,11 @@ class analysis:
     def get_n_llh_evals(self):
         return self.n_llh_evals
 
-    def get_histograms(self, outfile, pars):
-        self.model.get_histograms(outfile, pars)
+    def get_histograms(self, outfile, pars_map):
+        self.model.get_histograms(outfile, pars_map)
 
-    def get_hist_mcsum(self, pars):
-        self.model.get_hist_mcsum(pars)
+    def get_hist_mcsum(self, pars_map):
+        self.model.get_hist_mcsum(pars_map)
 
     def get_llh_evals(self):
         return self.n_llh_evals
@@ -127,12 +127,6 @@ class analysis:
     def get_par_names(self):
         return self.model.get_par_names()
        
-    def get_histograms(self, outfile, **pars):
-        self.model.get_histograms(outfile, **pars)
-
-    def get_hist_mcsum(self, **pars):
-        return self.model.get_hist_mcsum(**pars)
-
     def reset_n_llh_evals(self):
         self.n_llh_evals = 0
 

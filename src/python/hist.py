@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 class hist:
     def __init__(self, name, userbins_x, userbins_y, userbins_z):
@@ -27,3 +28,15 @@ class hist:
 
     def Scale(self, norm):
         self.value *= norm
+
+    def write_hist(self, outfile):
+        index = pd.MultiIndex.from_product([range(s) for s in self.value.shape], names=["logenergy_rec","coszenith_rec","ra_rec"])
+        df = pd.DataFrame({self.name:self.value.flatten()}, index=index)
+        df.to_hdf(outfile,self.name)
+
+    def set_hist(self, infile, key):
+        nbx = len(self.userbins_x)-1
+        nby = len(self.userbins_y)-1
+        nbz = len(self.userbins_z)-1
+        self.value = pd.read_hdf(infile,key).values.reshape(nbx,nby,nbz)
+

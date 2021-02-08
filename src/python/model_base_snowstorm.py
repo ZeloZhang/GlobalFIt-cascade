@@ -298,6 +298,38 @@ class model_base_snowstorm:
     def get_npars(self):
         return self.npars
 
+    def get_histograms(self, outfile, pars_map):
+        # order parameters as required by model. check for parameter names
+        pars = []
+        pars = self.fill_parameters(pars_map)
+        
+        self.update_hists(pars)
+
+        print("... writing analysis histograms")
+
+        for single_hists in self.input_hists:
+            single_hists.atm_conv.write_hist(outfile)
+            single_hists.atm_prompt.write_hist(outfile)
+            single_hists.astro.write_hist(outfile)
+            single_hists.mcsum.write_hist(outfile)
+
+            single_hists.nue.conv.write_hist(outfile)
+            single_hists.nue.prompt.write_hist(outfile)
+            single_hists.nue.astro.write_hist(outfile)
+            single_hists.nutau.conv.write_hist(outfile)
+            single_hists.nutau.prompt.write_hist(outfile)
+            single_hists.nutau.astro.write_hist(outfile)
+            single_hists.numu.conv.write_hist(outfile)
+            single_hists.numu.prompt.write_hist(outfile)
+            single_hists.numu.astro.write_hist(outfile)
+            
+            single_hists.muon.hist.write_hist(outfile)
+            single_hists.data.hist.write_hist(outfile)
+
+        print("... done")
+
+
+
     def get_hist_mcsum(self, pars_map):
         pars = []
         pars = self.fill_parameters(pars_map)
@@ -324,11 +356,9 @@ class model_base_snowstorm:
                 print(pars_map)
                 print("... exiting")
                 sys.exit(1)
-            
             # parameter found
-            print(self.parameters)
             pars[self.parameters[it]]=pars_map[it]
-            return pars
+        return pars
 
     def get_analysis_names(self):
         names = []
@@ -338,9 +368,7 @@ class model_base_snowstorm:
         return names
 
     def cache_data_hists(self):
-        self.data_hist_cache = []
-        for i in range(self.ndatasets):
-            self.data_hist_cache += [self.input_hists[i].data.hist]
+        self.data_hist_cache = [copy.deepcopy(item.data.hist) for item in self.input_hists]
 
     def restore_data_hists(self):
         for i in range(self.ndatasets):

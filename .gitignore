@@ -1,0 +1,8 @@
+src/python/__pycache__
+src/python/*.txt
+src/python/*.log
+*.swp
+*.h5
+*.pyc
+/fit_input_snowstorm
+
